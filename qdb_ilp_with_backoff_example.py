@@ -5,8 +5,8 @@ import time
 import sys
 import os
 
-HOST = 'localhost' # demo-python-client-tls-a664199e.ilp.b04c.questdb.net'
-PORT = 9009 # 32174
+HOST = 'localhost'
+PORT = 9009
 USE_AUTH = False
 AUTH = (os.environ['QDB_KID'], os.environ['QDB_D'], os.environ['QDB_X'], os.environ['QDB_Y'])
 
@@ -30,7 +30,7 @@ def send_with_backoff():
     if sender is None:
         exit(1)
 
-    rounds = 1000
+    rounds = 10000
     i = 0
     skip = 1
     buffer = Buffer()
@@ -38,7 +38,7 @@ def send_with_backoff():
     skip_goal = None
     while i < rounds:
         buffer.row(
-            'trades_test',
+            'trades_test_3',
             symbols={'name': 'with_buffer_server_timestamp'},
             columns={'value': i})
         if skip_goal is None:
@@ -47,8 +47,8 @@ def send_with_backoff():
                 sender.flush(buffer, False)
                 buffer.clear()
             except IngressError as e:
-                print(f"Connection lost")
-                skip_goal = 30
+                sys.stderr.write(f'Got error: {e}')
+                skip_goal = 5
         else:
             skip_i += 1
             if skip_i == skip_goal:
@@ -60,7 +60,7 @@ def send_with_backoff():
                     skip_goal = None
                     skip_i = 0
                 else:
-                    skip_goal = 30
+                    skip_goal = 5
                     skip_i = 0
                     print(f"goal is {skip_goal}")
 

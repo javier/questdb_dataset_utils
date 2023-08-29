@@ -3,6 +3,7 @@ import socket
 import sys
 import datetime
 import re
+import time
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -62,7 +63,9 @@ def ingest_transport_mode(mode, limit=200000):
 if __name__ == '__main__':
     try:
         sock.connect(('localhost', 9009))
-        ingest_transport_mode('bus')
+        while True:
+            ingest_transport_mode('bus')
+            time.sleep(60)
     except socket.error as e:
         sys.stderr.write(f'Got error: {e}')
     sock.close()

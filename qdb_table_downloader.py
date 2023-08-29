@@ -8,8 +8,8 @@ def download_query(query):
         last_line = None
         page = 0
         while last_line != 0:
-            row_from = page * 1000000
-            row_to = (page + 1) * 1000000
+            row_from = page * 50000
+            row_to = (page + 1) * 50000
             resp = requests.get('https://demo.questdb.io/exp', {'query': query, 'limit': f"{row_from},{row_to}"})
             decoded_content = resp.content.decode('utf-8')
             csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
@@ -25,4 +25,5 @@ def download_query(query):
 
 
 if __name__ == '__main__':
-    download_query('SELECT * from trades')
+    download_query("SELECT * from weather")
+
