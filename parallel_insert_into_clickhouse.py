@@ -42,9 +42,9 @@ def pull_data_files(loc: str = '*.csv') -> list:
 
 
 def insert_rows(rows: list, client: object) -> None:
+    t1 = datetime.now()
     dt_format = '%Y-%m-%dT%H:%M:%S.%fZ'
     inputs = [[datetime.strptime(row[0], dt_format), row[1], row[2], row[3], row[4], row[5], row[6]] for row in rows]
-    t1 = datetime.now()
     client.insert("ecommerce_sample_test", inputs,
                   column_names = ['ts', 'country', 'category', 'visits',
                                   'unique_visitors', 'avg_unit_price', 'sales']

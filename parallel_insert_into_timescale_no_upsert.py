@@ -52,12 +52,15 @@ def pull_data_files(loc: str = '*.csv') -> list:
     return files
 
 def insert_rows(rows: list, conn: object) -> None:
+    t1 = datetime.now()
     cur = conn.cursor()
     inputs = [[row[0], row[1], row[2], row[3], row[4], row[5], row[6]] for row in rows]
     extras.execute_values(cur, """
                           INSERT INTO ecommerce_sample_test VALUES %s
                           """, inputs)
     conn.commit()
+    t2 = datetime.now()
+    return  (t2 - t1).total_seconds()
 
 
 def file_insert(file: str):

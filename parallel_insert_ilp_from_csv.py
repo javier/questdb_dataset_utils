@@ -41,10 +41,10 @@ def pull_data_files(loc: str = '*.csv') -> list:
     return files
 
 def insert_rows(rows: list) -> None:
+    t1 = datetime.now()
     try:
         dt_format = '%Y-%m-%dT%H:%M:%S.%fZ'
         with Sender('localhost', 9009) as sender:
-            t1 = datetime.now()
             for row in rows:
                 sender.row(
                     'ecommerce_sample_test',
