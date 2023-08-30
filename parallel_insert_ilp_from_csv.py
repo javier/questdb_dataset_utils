@@ -40,22 +40,11 @@ def pull_data_files(loc: str = '*.csv') -> list:
     files = glob(loc)
     return files
 
-
-def read_file(file: str) -> list:
-    with open(file) as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader, None)
-        rows = [row for row in reader]
-    return rows
-
-def chunker(lst, n):
-    chunks = [lst[i * n:(i + 1) * n] for i in range((len(lst) + n - 1) // n )]
-    return chunks
-
 def insert_rows(rows: list) -> None:
-    dt_format = '%Y-%m-%dT%H:%M:%S.%fZ'
     try:
+        dt_format = '%Y-%m-%dT%H:%M:%S.%fZ'
         with Sender('localhost', 9009) as sender:
+            t1 = datetime.now()
             for row in rows:
                 sender.row(
                     'ecommerce_sample_test',
@@ -69,19 +58,33 @@ def insert_rows(rows: list) -> None:
         print(f'Got error: {e} {row[3]}', flush=True)
     except Exception as e:
         print(f'Got error: {e}', flush=True)
-
+    t2 = datetime.now()
+    return  (t2 - t1).total_seconds()
 
 
 def file_insert(file: str):
-    print(f"working on file {file}", flush=True)
-    rows = read_file(file)
-    chunks = chunker(rows, 100000)
-    t1 = datetime.now()
-    for chunk in chunks:
-        insert_rows(chunk)
-    t2 = datetime.now()
-    x = t2 - t1
-    print(f"finished with file {file} time was {x}", flush=True)
+    print(f"working on file {file}")
+    total_time = 0
+    with open(file) as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None)
+        rows = []
+        i = 0
+        for row in reader:
+            rows.append(row)
+            i += 1
+            if i == CHUNK_SIZE:
+                 i = 0
+                 total_time += insert_rows(rows)
+                 rows.clear()
+
+        if rows:
+            total_time += insert_rows(rows)
+
+    print(f"finished with file {file} time was {total_time}")
+
+
+CHUNK_SIZE = 100000
 
 
 if __name__ == '__main__':

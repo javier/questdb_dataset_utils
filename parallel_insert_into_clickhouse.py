@@ -40,39 +40,43 @@ def pull_data_files(loc: str = '*.csv') -> list:
     return files
 
 
-def read_file(file: str) -> list:
-    with open(file) as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader, None)
-        rows = [row for row in reader]
-    return rows
-
-def chunker(lst, n):
-    chunks = [lst[i * n:(i + 1) * n] for i in range((len(lst) + n - 1) // n )]
-    return chunks
 
 def insert_rows(rows: list, client: object) -> None:
     dt_format = '%Y-%m-%dT%H:%M:%S.%fZ'
     inputs = [[datetime.strptime(row[0], dt_format), row[1], row[2], row[3], row[4], row[5], row[6]] for row in rows]
+    t1 = datetime.now()
     client.insert("ecommerce_sample_test", inputs,
                   column_names = ['ts', 'country', 'category', 'visits',
                                   'unique_visitors', 'avg_unit_price', 'sales']
                           )
-
+    t2 = datetime.now()
+    return  (t2 - t1).total_seconds()
 
 
 def file_insert(file: str):
     client = connect_clickhouse()
     print(f"working on file {file}")
-    rows = read_file(file)
-    chunks = chunker(rows, 100000)
-    t1 = datetime.now()
-    for chunk in chunks:
-        insert_rows(chunk, client)
-    t2 = datetime.now()
-    x = t2 - t1
-    print(f"finished with file {file} time was {x}")
+    total_time = 0
+    with open(file) as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None)
+        rows = []
+        i = 0
+        for row in reader:
+            rows.append(row)
+            i += 1
+            if i == CHUNK_SIZE:
+                 i = 0
+                 total_time += insert_rows(rows, client)
+                 rows.clear()
 
+        if rows:
+            total_time += insert_rows(rows, client)
+
+    print(f"finished with file {file} time was {total_time}")
+
+
+CHUNK_SIZE = 100000
 
 if __name__ == '__main__':
     t1 = datetime.now()
