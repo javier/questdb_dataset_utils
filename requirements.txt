@@ -1,6 +1,7 @@
 psycopg2
 requests
 questdb
+GitPython
 pyodbc
 clickhouse-connect
 
