@@ -28,6 +28,6 @@ def write_table(df, table_name, host, port):
 if __name__ == '__main__':
      tickerStrings = ['TSLA', 'NVDA', 'AMD', 'AVGO', 'AMZN', 'META', 'GOOGL', 'AAPL', 'MSFT']
      start = '2017-09-01'
-     end = '2023-08-31'
+     end = '2023-09-05'
      df = get_tickers(tickerStrings, start, end)
      write_table(df, 'nasdaq', 'localhost', 9009)

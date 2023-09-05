@@ -51,7 +51,7 @@ if __name__ == '__main__':
     download_query(from_host,
                    file_name,
                    """
-                   select * from trades where timestamp  between '2023-09-04' AND '2023-09-05T23:59:59.999'
+                   select * from trades where timestamp  between '2023-09-05' AND '2023-09-05T23:59:59.999'
                    and symbol = 'BTC-USD';
                    """
                    )
