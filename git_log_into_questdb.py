@@ -17,12 +17,13 @@ def connect_postgres(host: str = '127.0.0.1', user: str = 'admin', pwd: str = 'q
         print(f'Had problem connecting with error {e}.')
 
 
-def create_table(table_name):
+def create_table(repo_name):
     conn = connect_postgres()
     with conn.cursor() as cur:
             cur.execute(f"""
-                        CREATE TABLE IF NOT EXISTS  '{table_name}' (
+                        CREATE TABLE IF NOT EXISTS gitlog (
                         committed_datetime TIMESTAMP,
+                        repo SYMBOL,
                         author_name SYMBOL,
                         summary STRING,
                         size INT,
@@ -30,7 +31,7 @@ def create_table(table_name):
                         deletions INT,
                         lines INT,
                         files INT
-                        ) timestamp (committed_datetime) PARTITION BY MONTH WAL DEDUP UPSERT KEYS(committed_datetime, author_name);
+                        ) timestamp (committed_datetime) PARTITION BY MONTH WAL DEDUP UPSERT KEYS(committed_datetime, repo, author_name);
 
                         """
                         )
@@ -39,14 +40,14 @@ def create_table(table_name):
 
 
 
-def insert_commits(commits, table_name):
+def insert_commits(commits, repo_name):
     try:
         with Sender('localhost', 9009) as sender:
             for commit in commits:
                 summary = (commit.summary[:75] + '..') if len(commit.summary) > 75 else commit.summary
                 sender.row(
-                    table_name,
-                    symbols={'author_name': commit.author.name},
+                    'gitlog',
+                    symbols={'repo': repo_name, 'author_name': commit.author.name},
                     columns={'summary': summary, 'size': commit.size,
                              'insertions': commit.stats.total['insertions'], 'deletions': commit.stats.total['deletions'],
                              'lines': commit.stats.total['lines'], 'files': commit.stats.total['files'] },
@@ -71,10 +72,9 @@ if __name__ == '__main__':
     print(repo_dir)
     repo = Repo(repo_dir)
     repo_name = repo.working_dir.split('/')[-1]
-    table_name = f'{repo_name}_commits'
-    create_table(table_name)
+    create_table(repo_name)
     commits = repo.iter_commits("master", max_count=10000000)
-    insert_commits(commits, table_name)
+    insert_commits(commits, repo_name)
 
 
 
