@@ -4,5 +4,6 @@ questdb
 GitPython
 pyodbc
 clickhouse-connect
-
+yfinance
+pandas
 
