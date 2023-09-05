@@ -6,4 +6,5 @@ pyodbc
 clickhouse-connect
 yfinance
 pandas
+yliveticker
 
