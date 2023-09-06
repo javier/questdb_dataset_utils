@@ -51,13 +51,13 @@ if __name__ == '__main__':
     download_query(from_host,
                    file_name,
                    """
-                   select * from trades where timestamp  between '2023-09-05T14:00:00.000' AND '2023-09-05T23:59:59.999'
+                   select * from trades where timestamp  between '2023-09-05T16:00:00.000' AND '2023-09-05T16:59:59.999'
                    and symbol = 'BTC-USD';
                    """
                    )
 
     run_query(host, """
-                CREATE TABLE IF NOT EXISTS 'trades' (
+                CREATE TABLE IF NOT EXISTS 'btc_trades' (
                     symbol SYMBOL capacity 256 CACHE,
                     side SYMBOL capacity 256 CACHE,
                     price DOUBLE,
@@ -67,8 +67,8 @@ if __name__ == '__main__':
               """)
 
     run_query(host, """
-                TRUNCATE TABLE 'trades'
+                TRUNCATE TABLE 'btc_trades'
               """)
 
-    upload_table(host, file_name, 'trades')
+    upload_table(host, file_name, 'btc_trades')
     os.remove(file_name)
