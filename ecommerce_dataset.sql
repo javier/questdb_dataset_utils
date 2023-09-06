@@ -1,4 +1,4 @@
-CREATE TABLE ecommerce_dataset(
+CREATE TABLE ecommerce_stats(
   ts TIMESTAMP,
   country SYMBOL capacity 256 CACHE,
   category SYMBOL capacity 256 CACHE,
@@ -8,7 +8,7 @@ CREATE TABLE ecommerce_dataset(
   number_of_products INT
 ) timestamp (ts) PARTITION BY DAY WAL DEDUP UPSERT KEYS(ts, country, category);
 
-truncate table ecommerce_dataset;
+truncate table ecommerce_stats;
 
 WITH countries AS (
   select 'UK' as country, rnd_long(500, 520, 0) as visits_multiplier,  rnd_long(100, 300, 0) as unique_multiplier  from long_sequence(1, 128349234,4327897)
@@ -37,7 +37,7 @@ timeline as (
 FROM long_sequence(365, 128349234,4327897)
 )
 
-INSERT INTO ecommerce_dataset
+INSERT INTO ecommerce_stats
 select ts, country, category,
       visits * visits_multiplier as visits, unique_visitors * unique_multiplier as unique_visitors,
       avg_unit_price * product_multiplier as sales, product_multiplier as number_of_products
