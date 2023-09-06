@@ -14,10 +14,10 @@ def run_query(host, sql_query):
     except requests.exceptions.RequestException as e:
         print(f'Error: {e}')
 
-def create_table(host):
+def create_table(host, table_name):
      run_query(host,
-        """
-            CREATE TABLE IF NOT EXISTS 'nasdaq' (
+        f"""
+            CREATE TABLE IF NOT EXISTS {table_name} (
             Ticker SYMBOL capacity 256 CACHE,
             Open DOUBLE,
             High DOUBLE,
@@ -31,8 +31,8 @@ def create_table(host):
      )
 
      run_query(host,
-        """
-            TRUNCATE TABLE 'nasdaq' (
+        f"""
+            TRUNCATE TABLE {table_name} (
         """
      )
 
@@ -61,9 +61,10 @@ def write_table(df, table_name, host, port):
             sys.stderr.write(f'Got error: {e}\n')
 
 if __name__ == '__main__':
-     create_table('http://localhost:9000')
+     table_name = "nasdaq_open_close"
+     create_table('http://localhost:9000', table_name)
      tickerStrings = ['TSLA', 'NVDA', 'AMD', 'AVGO', 'AMZN', 'META', 'GOOGL', 'AAPL', 'MSFT']
      start = '2017-09-01'
      end = '2023-09-06'
      df = get_tickers(tickerStrings, start, end)
-     write_table(df, 'nasdaq', 'localhost', 9009)
+     write_table(df, table_name, 'localhost', 9009)
