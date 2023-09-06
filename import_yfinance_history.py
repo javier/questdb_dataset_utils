@@ -17,13 +17,13 @@ def run_query(host, sql_query):
 def create_table(host):
      run_query(host,
         """
-            CREATE TABLE IF NOT EXIST 'nasdaq' (
+            CREATE TABLE IF NOT EXISTS 'nasdaq' (
             Ticker SYMBOL capacity 256 CACHE,
             Open DOUBLE,
             High DOUBLE,
             Low DOUBLE,
             Close DOUBLE,
-            Adj Close DOUBLE,
+            AdjClose DOUBLE,
             Volume LONG,
             Timestamp TIMESTAMP
     ) timestamp (Timestamp) PARTITION BY MONTH WAL;
@@ -49,6 +49,7 @@ def get_tickers(tickerStrings, start, end):
 
     df.index = pd.to_datetime(df.index)
     df.reset_index(inplace=True)
+    df.rename(columns={'Adj Close': 'AdjClose'}, inplace=True)
 
     return df
 
@@ -63,6 +64,6 @@ if __name__ == '__main__':
      create_table('http://localhost:9000')
      tickerStrings = ['TSLA', 'NVDA', 'AMD', 'AVGO', 'AMZN', 'META', 'GOOGL', 'AAPL', 'MSFT']
      start = '2017-09-01'
-     end = '2023-09-05'
+     end = '2023-09-06'
      df = get_tickers(tickerStrings, start, end)
      write_table(df, 'nasdaq', 'localhost', 9009)
