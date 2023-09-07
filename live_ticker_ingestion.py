@@ -13,7 +13,7 @@ def on_new_row(ws, msg):
         msg['timestamp'] =  msg['timestamp'] * 1000
         with connection.cursor() as cur:
             cur.execute('''
-            INSERT INTO live_ticker(
+            INSERT INTO nasdaq_trades(
                 timestamp,
                 id,
                 exchange,
@@ -48,8 +48,8 @@ if __name__ == '__main__':
     with pg.connect(yliveticker.conn_str, autocommit=True) as connection:
         with connection.cursor() as cur:
             cur.execute('''
-            CREATE TABLE IF NOT EXISTS live_ticker(
-                 timestamp TIMESTAMP,
+            CREATE TABLE IF NOT EXISTS nasdaq_trades(
+                timestamp TIMESTAMP,
                 'id' SYMBOL capacity 256 CACHE,
                 exchange SYMBOL capacity 256 CACHE,
                 quoteType LONG,
