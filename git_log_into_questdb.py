@@ -48,7 +48,7 @@ def insert_commits(commits, repo_name):
                 sender.row(
                     'gitlog',
                     symbols={'repo': repo_name, 'author_name': commit.author.name},
-                    columns={'summary': summary, 'size': commit.size,
+                    columns={'summary': summary.replace('\"','&quot;'), 'size': commit.size,
                              'insertions': commit.stats.total['insertions'], 'deletions': commit.stats.total['deletions'],
                              'lines': commit.stats.total['lines'], 'files': commit.stats.total['files'] },
                     at=TimestampNanos.from_datetime(commit.committed_datetime)
