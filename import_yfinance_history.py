@@ -32,7 +32,7 @@ def create_table(host, table_name):
 
      run_query(host,
         f"""
-            TRUNCATE TABLE {table_name} (
+            TRUNCATE TABLE {table_name}
         """
      )
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
      table_name = "nasdaq_open_close"
      create_table('http://localhost:9000', table_name)
      tickerStrings = ['TSLA', 'NVDA', 'AMD', 'AVGO', 'AMZN', 'META', 'GOOGL', 'AAPL', 'MSFT']
-     start = '2017-09-01'
+     start = '2017-09-05'
      end = '2023-09-06'
      df = get_tickers(tickerStrings, start, end)
      write_table(df, table_name, 'localhost', 9009)
