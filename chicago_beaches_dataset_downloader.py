@@ -29,12 +29,13 @@ def run_query(host, sql_query):
 def transform_locations_table(host, file_name, table_name):
     create_query = f"""
         CREATE TABLE IF NOT EXISTS '{table_name}' (
+            UpdatedAt TIMESTAMP,
             SensorName SYMBOL,
             SensorType SYMBOL,
             Latitude DOUBLE,
             Longitude DOUBLE,
             G7c GEOHASH(7c)
-            );
+            ) timestamp(UpdatedAt) PARTITION BY YEAR WAL;
             """
     truncate_query = f"""
         TRUNCATE TABLE '{table_name}'
@@ -42,7 +43,9 @@ def transform_locations_table(host, file_name, table_name):
 
     transform_query = f"""
         INSERT INTO '{table_name}'
-        SELECT  SensorName,
+        SELECT
+                '2023-09-04T00:00:00.000000Z' AS UpdatedAt,
+                SensorName,
                 SensorType,
                 Latitude,
                 Longitude,
