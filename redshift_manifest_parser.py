@@ -1,6 +1,7 @@
 import json
 import sys
 
+
 def get_type(redshift_type):
     if redshift_type in ["character varying", "char", "character", "nchar", "varchar", "nvarchar", "bpchar"]:
         return "SYMBOL"
@@ -40,6 +41,7 @@ def columns_from_manifest(manifest_path):
 
     return columns
 
+
 def get_create_table_statement(table_name, columns):
     columns_and_types = []
     for column in columns:
@@ -52,6 +54,7 @@ def get_create_table_statement(table_name, columns):
     '''
 
     return statement
+
 
 def get_curl_schema(table_name, columns):
     columns_and_types = []
@@ -74,7 +77,8 @@ if __name__ == '__main__':
     if len(sys.argv) !=3:
         print("""
               Parser for Redshift UNLOAD MANIFEST VERBOSE files. It will take the schema and will output a CREATE TABLE
-              STATEMENT compatible with questdb, applying type conversions.
+              STATEMENT compatible with questdb, applying type conversions. It will also output a curl command line that
+              could be used to ingest a csv using the QuestDB REST API.
 
               usage: python redshift_manifest_parser table_name path_to_manifest
               """)
