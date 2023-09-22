@@ -62,7 +62,7 @@ def get_curl_schema(table_name, columns):
     statement = f"""curl  -F schema='[ \ \n\t{column_text} \\
     ]' \\
     -F data=@my_file.csv \\
-    http://localhost:9000/imp?name={table_name}
+    'http://localhost:9000/imp?name={table_name}&partitionBy=DAY&timestamp=<YOUR_TS>'
     """
 
     return statement
