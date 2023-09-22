@@ -28,21 +28,42 @@ def get_type(redshift_type):
         return "STRING"
 
 
-def parse_manifest(manifest_path):
+def columns_from_manifest(manifest_path):
     json_data = json.load(open(manifest_path))
     elements = json_data["schema"]["elements"]
     columns = []
-    for column in elements:
-        columns.append(column["name"] + " " + get_type(column["type"]["base"]))
+    for element in elements:
+        column = {}
+        column["name"] = element["name"]
+        column["type"] = get_type(element["type"]["base"])
+        columns.append(column)
 
     return columns
 
 def get_create_table_statement(table_name, columns):
-    column_text = (", \n\t").join(columns)
+    columns_and_types = []
+    for column in columns:
+        columns_and_types.append(column["name"] + " " + column["type"])
+
+    column_text = (", \n\t").join(columns_and_types)
     statement = f'''CREATE TABLE {table_name} (\n\t{column_text})
     TIMESTAMP (<your_ts>)
     PARTITION BY DAY WAL
     '''
+
+    return statement
+
+def get_curl_schema(table_name, columns):
+    columns_and_types = []
+    for column in columns:
+        columns_and_types.append( json.dumps(column))
+
+    column_text = (", \\\n\t").join(columns_and_types)
+    statement = f"""curl  -F schema='[ \ \n\t{column_text} \\
+    ]' \\
+    -F data=@my_file.csv \\
+    http://localhost:9000/imp?name={table_name}
+    """
 
     return statement
 
@@ -61,9 +82,11 @@ if __name__ == '__main__':
     else:
         table_name = sys.argv[1]
         manifest_path = sys.argv[2]
-        columns = parse_manifest(manifest_path)
+        columns = columns_from_manifest(manifest_path)
         statement = get_create_table_statement(table_name, columns)
         print(statement)
+        curl_schema = get_curl_schema(table_name, columns)
+        print(curl_schema)
 
 
 
