@@ -7,4 +7,6 @@ clickhouse-connect
 yfinance
 pandas
 yliveticker
+tableschema
+
 
