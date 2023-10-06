@@ -4,6 +4,7 @@ from psycopg2 import extras
 import csv
 from glob import glob
 from datetime import datetime
+from textwrap import dedent
 import sys
 
 def connect_postgres(host: str = '127.0.0.1', user: str = 'admin', pwd: str = 'quest', port: int = 8812, dbname: str = 'qdb'):
@@ -18,7 +19,7 @@ def connect_postgres(host: str = '127.0.0.1', user: str = 'admin', pwd: str = 'q
 
 def get_table_meta(table_name):
     meta = { "table_name": table_name, "partition" : None, "wal": False, "dedup" : None, "upsertKeys" : [],
-            "columns" : {}, "symbols": [], "designated" : None, "columns_sql" : [] }
+            "columns" : {}, "symbols": [], "designated" : None, "columns_sql" : [], "with" : [] }
     conn = connect_postgres()
     with conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor) as cur:
         cur.execute(f"""
@@ -29,10 +30,11 @@ def get_table_meta(table_name):
         meta["dedup"] = row.get("dedup")
         meta["designated"] = row.get("designatedTimestamp")
         meta["partition"] = row.get("partitionBy")
+        if meta["partition"] == "NONE":
+            meta["partition"] = None
         meta["wal"] = row.get("walEnabled")
-        meta["maxUncommittedRows"] = row.get("maxUncommittedRows")
-        meta["o3MaxLag"] = row.get("o3MaxLag")
-
+        if row.get("maxUncommittedRows"):
+            meta["with"].append(f' maxUncommittedRows={row["maxUncommittedRows"]} ')
 
         cur.execute(f"""
                     SELECT * FROM table_columns('{table_name}');
@@ -62,6 +64,38 @@ def get_table_meta(table_name):
 
     return meta
 
+def get_create_statement(table_name):
+    table_meta = get_table_meta(table_name)
+    columns_sql = ",\n\t".join(table_meta["columns_sql"])
+    if table_meta["designated"]:
+        designated_sql = f' TIMESTAMP({table_meta["designated"]}) '
+    else:
+        designated_sql = ""
+    if table_meta["partition"]:
+        partition_sql = f' PARTITION BY {table_meta["partition"]} '
+    else:
+        partition_sql = ""
+    if table_meta["wal"]:
+        wal_sql = f' WAL '
+    else:
+        wal_sql = ""
+    if table_meta["dedup"]:
+        upsert_sql = ", ".join(table_meta["upsertKeys"])
+        dedup_sql = f" DEDUP UPSERT KEYS({upsert_sql}) "
+    else:
+        dedup_sql = ""
+    if table_meta["with"]:
+        with_sql =  f' WITH {", ".join(table_meta["with"])}'
+    else:
+        with_sql = ""
+
+
+    sql = f"""\
+    CREATE TABLE {table_name} (
+    \t{columns_sql}
+    ) {designated_sql} {partition_sql} {wal_sql} {with_sql} {dedup_sql};
+    """
+    return sql
 
 
 
@@ -97,8 +131,8 @@ if __name__ == '__main__':
         table_name = sys.argv[1]
 
 
-    table_meta = get_table_meta(table_name)
-    print(table_meta)
+    sql = get_create_statement(table_name)
+    print(sql)
 
 
 
