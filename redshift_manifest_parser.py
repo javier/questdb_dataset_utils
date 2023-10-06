@@ -61,8 +61,8 @@ def get_curl_schema(table_name, columns):
     for column in columns:
         columns_and_types.append( json.dumps(column))
 
-    column_text = (", \\\n\t").join(columns_and_types)
-    statement = f"""curl  -F schema='[ \ \n\t{column_text} \\
+    column_text = (", \n\t").join(columns_and_types)
+    statement = f"""curl  -F schema='[  \n\t{column_text}
     ]' \\
     -F data=@my_file.csv \\
     'http://localhost:9000/imp?name={table_name}&partitionBy=DAY&timestamp=<YOUR_TS>'
