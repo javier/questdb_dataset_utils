@@ -6,6 +6,7 @@ from glob import glob
 from datetime import datetime
 from textwrap import dedent
 import sys
+import argparse
 
 def connect_postgres(host: str = '127.0.0.1', port: int = 8812,  user: str = 'admin', pwd: str = 'quest', dbname: str = 'qdb'):
     try:
@@ -159,31 +160,54 @@ def insert_rows(origin_conn, table_meta, dest_ilp_host, dest_ilp_port, tls, auth
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 14 and len(sys.argv) != 19:
-        print("usage: table_migrator.py table_name origin_pg_host origin_pg_port origin_pg_user origin_pg_password origin_database destination_pg_host destination_pg_port destination_pg_user destination_pg_password destination_database destination_ilp_host destination_ilp_port tls_flag auth_kid auth_d auth_x auth_y")
-        exit()
+    parser = argparse.ArgumentParser(description='Migrate table across servers.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--table-name", required=True, help='Name of the table to migrate.')
+    parser.add_argument("--destination-host", required=True, help='IP or Name of destination host (for pg-wire protocol).')
+    parser.add_argument("--destination-ilp-host", required=True, help='IP or Name of destination host (for ILP protocol).')
 
-    table_name = sys.argv[1]
-    origin_host = sys.argv[2]
-    origin_port = sys.argv[3]
-    origin_user = sys.argv[4]
-    origin_password = sys.argv[5]
-    origin_database = sys.argv[6]
-    destination_host = sys.argv[7]
-    destination_port = sys.argv[8]
-    destination_user = sys.argv[9]
-    destination_password = sys.argv[10]
-    destination_database = sys.argv[11]
-    destination_ilp_host = sys.argv[12]
-    destination_ilp_port = sys.argv[13]
+    parser.add_argument("--origin-host", default='localhost', help='IP or Name of origin host (for pg-wire protocol).')
+    parser.add_argument("--origin-port", default='8812', help='Port of origin host (for pg-wire protocol).')
+    parser.add_argument("--origin-user", default='admin', help='User of origin host (for pg-wire protocol).')
+    parser.add_argument("--origin-password", default='quest', help='Password of the origin-user (for pg-wire protocol).')
+    parser.add_argument("--origin-database", default='qdb',  help='Database in the origin host.')
 
-    if len(sys.argv) == 19:
-        tls = sys.argv[14].lower() in ('true', '1', 't')
-        auth = (sys.argv[15], sys.argv[16], sys.argv[17], sys.argv[18])
+    parser.add_argument("--destination-port", default='8812', help='Port of destination host (for pg-wire protocol).')
+    parser.add_argument("--destination-user", default='admin', help='User of destination host (for pg-wire protocol).')
+    parser.add_argument("--destination-password", default='quest', help='Password of the destination-user (for pg-wire protocol).')
+    parser.add_argument("--destination-database", default='qdb', help='Database in the destination host.')
+    parser.add_argument("--destination-ilp-port",  default='9009', help='Port of destination host (for ILP protocol).')
+    parser.add_argument("--ilp-auth-kid", required=False, help='KID parameter for ILP authentication.')
+    parser.add_argument("--ilp-auth-d", required=False, help='D parameter for ILP authentication.')
+    parser.add_argument("--ilp-auth-x", required=False, help='X parameter for ILP authentication.')
+    parser.add_argument("--ilp-auth-y", required=False, help='Y parameter for ILP authentication.')
+    parser.add_argument("--use-tls-over-ilp", default=False, action='store_true', help='Use TLS with ILP.')
+
+
+    args = parser.parse_args()
+
+    table_name = args.table_name
+    origin_host = args.origin_host
+    origin_port = args.origin_port
+    origin_user = args.origin_user
+    origin_password = args.origin_password
+    origin_database = args.origin_database
+    destination_host = args.destination_host
+    destination_port = args.destination_port
+    destination_user = args.destination_user
+    destination_password = args.destination_password
+    destination_database = args.destination_database
+    destination_ilp_host = args.destination_ilp_host
+    destination_ilp_port = args.destination_ilp_port
+    tls = args.use_tls_over_ilp
+
+    if args.ilp_auth_kid and args.ilp_auth_d and args.ilp_auth_x and args.ilp_auth_y:
+        auth = (args.ilp_auth_kid, args.ilp_auth_d, args.ilp_auth_x, args.ilp_auth_y)
     else:
-        tls = False
         auth = None
 
+    if origin_host == destination_host and origin_port == destination_port:
+        print("Origin and destination hosts must be different.")
+        exit()
 
 
     origin_conn = connect_postgres(origin_host, origin_port, origin_user, origin_password, origin_database)
