@@ -7,7 +7,7 @@ from datetime import datetime
 from textwrap import dedent
 import sys
 
-def connect_postgres(host: str = '127.0.0.1', user: str = 'admin', pwd: str = 'quest', port: int = 8812, dbname: str = 'qdb'):
+def connect_postgres(host: str = '127.0.0.1', port: int = 8812,  user: str = 'admin', pwd: str = 'quest', dbname: str = 'qdb'):
     try:
         conn = psycopg2.connect(f'user={user} password={pwd} host={host} port={port} dbname={dbname}')
         conn.autocommit = False
@@ -17,10 +17,10 @@ def connect_postgres(host: str = '127.0.0.1', user: str = 'admin', pwd: str = 'q
         print(f'Had problem connecting with error {e}.')
 
 
-def get_table_meta(table_name):
+def get_table_meta(conn, table_name):
     meta = { "table_name": table_name, "partition" : None, "wal": False, "dedup" : None, "upsertKeys" : [],
             "columns" : {}, "symbols": [], "designated" : None, "columns_sql" : [], "with" : [] }
-    conn = connect_postgres()
+
     with conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor) as cur:
         cur.execute(f"""
                     SELECT * FROM tables WHERE name = '{table_name}';
@@ -64,8 +64,8 @@ def get_table_meta(table_name):
 
     return meta
 
-def get_create_statement(table_name):
-    table_meta = get_table_meta(table_name)
+def get_create_statement(conn, table_meta):
+
     columns_sql = ",\n\t".join(table_meta["columns_sql"])
     if table_meta["designated"]:
         designated_sql = f' TIMESTAMP({table_meta["designated"]}) '
@@ -91,48 +91,115 @@ def get_create_statement(table_name):
 
 
     sql = f"""\
-    CREATE TABLE {table_name} (
+    CREATE TABLE IF NOT EXISTS {table_meta['table_name']} (
     \t{columns_sql}
     ) {designated_sql} {partition_sql} {wal_sql} {with_sql} {dedup_sql};
     """
     return sql
 
+def create_dest_table(conn, sql):
+    with conn.cursor() as cur:
+        cur.execute(sql)
 
+def prepare_columns(row, col_list):
+    cols={}
+    for col in col_list:
+        if row[col]:
+            cols[col] = row[col]
 
-def insert_rows(rows: list) -> None:
-    t1 = datetime.now()
-    try:
-        dt_format = '%Y-%m-%dT%H:%M:%S.%fZ'
-        with Sender('localhost', 9009) as sender:
-            for row in rows:
-                sender.row(
-                    'ecommerce_sample_test',
-                    symbols={'country': row[1], 'category': row[2]},
-                    columns={'visits': int(row[3]), 'unique_visitors': int(row[4]),'avg_unit_price':float(row[5]), 'sales':float(row[6])},
-                    at=TimestampNanos.from_datetime(datetime.strptime(row[0], dt_format))
-                    )
+    return cols
+
+def insert_rows(origin_conn, table_meta, dest_ilp_host, dest_ilp_port, tls, auth):
+    table_name = table_meta['table_name']
+    offset = 0
+    chunk_size = 10000
+    limit = chunk_size
+    dt_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+    symbol_list = table_meta['symbols']
+    designated_timestamp = table_meta['designated']
+    column_list = table_meta['columns'].keys() - (symbol_list + [designated_timestamp])
+
+    with Sender(dest_ilp_host, dest_ilp_port, auth=auth, tls=tls) as sender:
+        row_number = 0
+        try:
+            while True:
+                with origin_conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(f"""
+                                SELECT * FROM {table_name}  LIMIT {offset}, {limit};
+                                """
+                                )
+                    if cur.rowcount == 0:
+                        print(f"Ingested {row_number} rows")
+                        break
+                    else:
+                        offset += chunk_size
+                        limit += chunk_size
+
+                    records = cur.fetchall()
+                    for row in records:
+                        row_number += 1
+                        symbols = prepare_columns(row, symbol_list)
+                        columns = prepare_columns(row,  column_list)
+                        sender.row(
+                             table_name,
+                             symbols=symbols,
+                             columns=columns,
+                             at=TimestampNanos.from_datetime(row[designated_timestamp])
+                            )
 
             sender.flush()
-    except IngressError as e:
-        print(f'Got error: {e} {row[3]}', flush=True)
-    except Exception as e:
-        print(f'Got error: {e}', flush=True)
-    t2 = datetime.now()
-    return  (t2 - t1).total_seconds()
+        except IngressError as e:
+            print(f'Got error: {e} {row}', flush=True)
+        except Exception as e:
+            print(f'Got error: {e}', flush=True)
+
+    return
 
 
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("usage: table_migrator.py table_name")
+    if len(sys.argv) != 14 and len(sys.argv) != 19:
+        print("usage: table_migrator.py table_name origin_pg_host origin_pg_port origin_pg_user origin_pg_password origin_database destination_pg_host destination_pg_port destination_pg_user destination_pg_password destination_database destination_ilp_host destination_ilp_port tls_flag auth_kid auth_d auth_x auth_y")
         exit()
+
+    table_name = sys.argv[1]
+    origin_host = sys.argv[2]
+    origin_port = sys.argv[3]
+    origin_user = sys.argv[4]
+    origin_password = sys.argv[5]
+    origin_database = sys.argv[6]
+    destination_host = sys.argv[7]
+    destination_port = sys.argv[8]
+    destination_user = sys.argv[9]
+    destination_password = sys.argv[10]
+    destination_database = sys.argv[11]
+    destination_ilp_host = sys.argv[12]
+    destination_ilp_port = sys.argv[13]
+
+    if len(sys.argv) == 19:
+        tls = sys.argv[14].lower() in ('true', '1', 't')
+        auth = (sys.argv[15], sys.argv[16], sys.argv[17], sys.argv[18])
     else:
-        table_name = sys.argv[1]
+        tls = False
+        auth = None
 
 
-    sql = get_create_statement(table_name)
-    print(sql)
+
+    origin_conn = connect_postgres(origin_host, origin_port, origin_user, origin_password, origin_database)
+    table_meta = get_table_meta(origin_conn, table_name)
+    sql = get_create_statement(origin_conn, table_meta)
+
+    destination_conn = connect_postgres(destination_host, destination_port, destination_user, destination_password, destination_database)
+    create_dest_table(destination_conn, sql)
+    print(f'Created table with schema: \n {sql}')
+
+    insert_rows(origin_conn, table_meta, destination_ilp_host, destination_ilp_port, tls, auth)
+
+    origin_conn.close()
+    destination_conn.close()
+
+
 
 
 
