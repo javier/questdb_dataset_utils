@@ -19,8 +19,9 @@ def connect_postgres(host: str = '127.0.0.1', user: str = 'postgres', pwd: str =
 def create_table():
     conn = connect_postgres()
     with conn.cursor() as cur:
-            cur.execute("""
-                        CREATE TABLE IF NOT EXISTS  ecommerce_sample_test (
+        for country in ['ES', 'UK', 'IT', 'DE', 'FR']:
+            cur.execute(f"""
+                        CREATE TABLE IF NOT EXISTS  ecommerce_sample_test_{country} (
                         ts TIMESTAMPTZ,
                         country TEXT,
                         category TEXT,
@@ -33,14 +34,14 @@ def create_table():
 
                         """
                         )
-            cur.execute("""
-                    CREATE UNIQUE INDEX IF NOT EXISTS ecommerce_sample_unique_idx ON ecommerce_sample_test(ts,country, category);
+            cur.execute(f"""
+                    CREATE UNIQUE INDEX IF NOT EXISTS ecommerce_sample_{country}_unique_idx ON ecommerce_sample_test_{country}(ts,country, category);
                         """)
-            cur.execute("""
-                    SELECT create_hypertable('ecommerce_sample_test', 'ts', if_not_exists => TRUE);
+            cur.execute(f"""
+                    SELECT create_hypertable('ecommerce_sample_test_{country}', 'ts', if_not_exists => TRUE);
                         """)
-            cur.execute("""
-                    CREATE INDEX IF NOT EXISTS ecommerce_sample_idx ON ecommerce_sample_test(ts,country, category);
+            cur.execute(f"""
+                    CREATE INDEX IF NOT EXISTS ecommerce_sample_{country}_idx ON ecommerce_sample_test_{country}(ts,country, category);
 
                         """)
     conn.commit()
@@ -52,12 +53,12 @@ def pull_data_files(loc: str = '*.csv') -> list:
     return files
 
 
-def insert_rows(rows: list, conn: object) -> None:
-    t1 = datetime.now()
+def insert_rows(country: str, rows: list, conn: object) -> None:
     cur = conn.cursor()
+    t1 = datetime.now()
     inputs = [[row[0], row[1], row[2], row[3], row[4], row[5], row[6]] for row in rows]
-    extras.execute_values(cur, """
-                          INSERT INTO ecommerce_sample_test VALUES %s
+    extras.execute_values(cur, f"""
+                          INSERT INTO ecommerce_sample_test_{country} VALUES %s
                           ON CONFLICT(ts, country, category) DO UPDATE
                             SET visits = excluded.visits,
                           unique_visitors = excluded.unique_visitors,
@@ -72,6 +73,7 @@ def file_insert(file: str):
     conn = connect_postgres()
     print(f"working on file {file}")
     total_time = 0
+    country = file[-6:-4]
     with open(file) as csvfile:
         reader = csv.reader(csvfile)
         next(reader, None)
@@ -82,11 +84,11 @@ def file_insert(file: str):
             i += 1
             if i == CHUNK_SIZE:
                  i = 0
-                 total_time += insert_rows(rows, conn)
+                 total_time += insert_rows(country, rows, conn)
                  rows.clear()
 
         if rows:
-            total_time += insert_rows(rows, conn)
+            total_time += insert_rows(country, rows, conn)
 
     print(f"finished with file {file} time was {total_time}")
 
@@ -104,7 +106,7 @@ if __name__ == '__main__':
 
     print(f'will process these files: {files}')
     create_table()
-    with ProcessPoolExecutor(max_workers=5) as poolparty:
+    with ProcessPoolExecutor(max_workers=8) as poolparty:
         poolparty.map(file_insert, files)
     t2 = datetime.now()
     x = t2 - t1
