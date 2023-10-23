@@ -42,3 +42,8 @@ select ts, country, category,
       visits * visits_multiplier as visits, unique_visitors * unique_multiplier as unique_visitors,
       avg_unit_price * product_multiplier as sales, product_multiplier as number_of_products
  from countries cross join categories cross join timeline;
+
+
+------ optionally if we want extra ln_timestamp column as long
+alter table ecommerce_sample_test_global ADD COLUMN ln_timestamp LONG;
+update ecommerce_sample_test_global SET ln_timestamp = ts;
