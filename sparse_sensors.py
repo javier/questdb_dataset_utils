@@ -102,9 +102,10 @@ def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file
     SELECT
         timestamp,
         vehicle_id,
-        ''' + ', '.join([f'avg(sensor_{i}) AS avg_sensor_{i}' for i in range(1, num_sensors + 1)]) + '''
+        ''' + ', '.join([f'last_not_null(sensor_{i}) AS sensor_{i}' for i in range(1, num_sensors + 1)]) + '''
     FROM
         vehicle_sensor_data
+    -- WHERE vehicle_id = 'AAA0000'
     SAMPLE BY 1m
     LIMIT %s;
     ''' % select_limit
