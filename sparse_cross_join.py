@@ -1,7 +1,6 @@
 import psycopg2
 from psycopg2 import sql
 import random
-import time
 from datetime import datetime, timedelta
 import argparse
 import csv
@@ -80,10 +79,14 @@ def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file
 
             while rows_generated < total_rows:
                 for vehicle_id in vehicle_ids:
+                    if rows_generated >= total_rows:
+                        break
                     timestamp = vehicle_timestamps[vehicle_id]
                     sensor_data = generate_sparse_sensor_data(vehicle_id, timestamp, num_sensors=num_sensors)
 
                     for sensor_id in range(1, num_sensors + 1):
+                        if rows_generated >= total_rows:
+                            break
                         if f'sensor_{sensor_id}' in sensor_data:
                             symbols = {'vehicle_id': vehicle_id}
                             columns = {'value': sensor_data[f'sensor_{sensor_id}']}
@@ -94,10 +97,8 @@ def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file
                                 columns=columns,
                                 at=TimestampNanos(timestamp_nanos)
                             )
+                            rows_generated += 1
                     vehicle_timestamps[vehicle_id] += timedelta(milliseconds=delay_ms)
-                    rows_generated += 1
-                    if rows_generated >= total_rows:
-                        break
 
         # Close the connection
         cursor.close()
