@@ -31,7 +31,8 @@ def generate_sparse_sensor_data(vehicle_id, timestamp, num_sensors=110):
         data[f'sensor_{sensor_id}'] = random.uniform(0, 100)
     return data
 
-def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file, skip_ingestion, show_query, drop_table, select_vehicle_id, select_output_file):
+def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file, skip_ingestion, show_query,
+         drop_table, select_vehicle_id, join_as_of, select_output_file):
     # Database connection parameters for QuestDB
     db_params = {
         'dbname': 'qdb',
@@ -107,13 +108,22 @@ def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file
     # Construct the query
     subqueries = []
     for sensor_id in range(1, num_sensors + 1):
-        subquery = (
-            f"s{sensor_id} AS ("
-            f"SELECT timestamp, vehicle_id, value "
-            f"FROM vehicle_sensor_{sensor_id} "
-            + (f"WHERE vehicle_id = '{select_vehicle_id}' " if select_vehicle_id else "") +
-            f"LATEST ON timestamp PARTITION BY vehicle_id)"
-        )
+        if join_as_of:
+            subquery = (
+                f"s{sensor_id} AS ("
+                f"SELECT timestamp, vehicle_id, value "
+                f"FROM vehicle_sensor_{sensor_id} "
+                + (f"WHERE vehicle_id = '{select_vehicle_id}' " if select_vehicle_id else "") +
+                f")"
+            )
+        else:
+            subquery = (
+                f"s{sensor_id} AS ("
+                f"SELECT timestamp, vehicle_id, value "
+                f"FROM vehicle_sensor_{sensor_id} "
+                + (f"WHERE vehicle_id = '{select_vehicle_id}' " if select_vehicle_id else "") +
+                f"LATEST ON timestamp PARTITION BY vehicle_id)"
+            )
         subqueries.append(subquery)
 
     subquery_str = ",\n".join(subqueries)
@@ -125,7 +135,10 @@ def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file
     if select_vehicle_id:
         joins = ' '.join([f'CROSS JOIN s{sensor_id}' for sensor_id in range(2, num_sensors + 1)])
     else:
-        joins = ' '.join([f'LEFT JOIN s{sensor_id} ON s1.vehicle_id = s{sensor_id}.vehicle_id' for sensor_id in range(2, num_sensors + 1)])
+        if join_as_of:
+            joins = ' '.join([f'ASOF JOIN s{sensor_id} ON s1.vehicle_id = s{sensor_id}.vehicle_id' for sensor_id in range(2, num_sensors + 1)])
+        else:
+            joins = ' '.join([f'LEFT JOIN s{sensor_id} ON s1.vehicle_id = s{sensor_id}.vehicle_id' for sensor_id in range(2, num_sensors + 1)])
 
     query = (
         f"WITH\n"
@@ -180,7 +193,10 @@ if __name__ == "__main__":
     parser.add_argument('--show_query', type=bool, default=True, help='Show the SQL query')
     parser.add_argument('--drop_table', action='store_true', help='Drop the table before creating it')
     parser.add_argument('--select_vehicle_id', type=str, help='Vehicle ID to filter the query results')
+    parser.add_argument('--join_as_of', type=bool, default=False, help='Use ASOF JOIN instead of LEFT JOIN')
     parser.add_argument('--select_output_file', type=str, help='File path to save the SQL query')
     args = parser.parse_args()
 
-    main(args.num_vehicles, args.num_sensors, args.delay_ms, args.total_rows, args.select_limit, args.csv, args.skip_ingestion, args.show_query, args.drop_table, args.select_vehicle_id, args.select_output_file)
+    main(args.num_vehicles, args.num_sensors, args.delay_ms, args.total_rows, args.select_limit, args.csv,
+         args.skip_ingestion, args.show_query, args.drop_table, args.select_vehicle_id, args.join_as_of,
+         args.select_output_file)
