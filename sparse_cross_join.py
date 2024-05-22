@@ -42,21 +42,22 @@ def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file
         'port': '8812'
     }
 
+
+    # Generate vehicle IDs
+    vehicle_ids = generate_vehicle_ids(num_vehicles)
+
+    # Connect to QuestDB
+    conn = psycopg2.connect(**db_params)
+    cursor = conn.cursor()
+
+    # Drop tables if drop_table is True
+    if drop_table:
+        for sensor_id in range(1, num_sensors + 1):
+            drop_table_query = f'DROP TABLE IF EXISTS vehicle_sensor_{sensor_id}'
+            cursor.execute(drop_table_query)
+        conn.commit()
+
     if not skip_ingestion:
-        # Generate vehicle IDs
-        vehicle_ids = generate_vehicle_ids(num_vehicles)
-
-        # Connect to the PostgreSQL database (QuestDB in this case)
-        conn = psycopg2.connect(**db_params)
-        cursor = conn.cursor()
-
-        # Drop tables if drop_table is True
-        if drop_table:
-            for sensor_id in range(1, num_sensors + 1):
-                drop_table_query = f'DROP TABLE IF EXISTS vehicle_sensor_{sensor_id}'
-                cursor.execute(drop_table_query)
-            conn.commit()
-
         # Create the sensor tables
         for sensor_id in range(1, num_sensors + 1):
             create_table_query = f'''
