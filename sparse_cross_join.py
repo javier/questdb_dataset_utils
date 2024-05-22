@@ -32,7 +32,7 @@ def generate_sparse_sensor_data(vehicle_id, timestamp, num_sensors=110):
     return data
 
 def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file, skip_ingestion, show_query,
-         drop_table, select_vehicle_id, join_as_of, select_output_file):
+         drop_table, select_vehicle_id, join_as_of, full_timestamps, select_output_file):
     # Database connection parameters for QuestDB
     db_params = {
         'dbname': 'qdb',
@@ -129,7 +129,8 @@ def main(num_vehicles, num_sensors, delay_ms, total_rows, select_limit, csv_file
     subquery_str = ",\n".join(subqueries)
     select_fields = ["s1.timestamp", "s1.vehicle_id", "s1.value AS value_1"]
     for sensor_id in range(2, num_sensors + 1):
-        select_fields.append(f"s{sensor_id}.timestamp AS timestamp_{sensor_id}")
+        if full_timestamps:
+            select_fields.append(f"s{sensor_id}.timestamp AS timestamp_{sensor_id}")
         select_fields.append(f"s{sensor_id}.value AS value_{sensor_id}")
 
     if select_vehicle_id:
@@ -194,9 +195,10 @@ if __name__ == "__main__":
     parser.add_argument('--drop_table', action='store_true', help='Drop the table before creating it')
     parser.add_argument('--select_vehicle_id', type=str, help='Vehicle ID to filter the query results')
     parser.add_argument('--join_as_of', type=bool, default=False, help='Use ASOF JOIN instead of LEFT JOIN')
+    parser.add_argument('--full_timestamps', type=bool, default=False, help='Select all timestamps from all tables')
     parser.add_argument('--select_output_file', type=str, help='File path to save the SQL query')
     args = parser.parse_args()
 
     main(args.num_vehicles, args.num_sensors, args.delay_ms, args.total_rows, args.select_limit, args.csv,
          args.skip_ingestion, args.show_query, args.drop_table, args.select_vehicle_id, args.join_as_of,
-         args.select_output_file)
+         args.full_timestamps, args.select_output_file)
