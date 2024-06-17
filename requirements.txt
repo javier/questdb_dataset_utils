@@ -8,5 +8,5 @@ yfinance
 pandas
 yliveticker
 tableschema
-
+sqlparse
 
