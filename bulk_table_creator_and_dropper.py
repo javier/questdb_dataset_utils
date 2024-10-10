@@ -84,10 +84,14 @@ if __name__ == '__main__':
     main()
 
 
-# usage example
+# usage example for create
 # python bulk_table_creator_and_dropper.py \
 #  --mode create \
 #  --table-name test_trades \
 #  --amount 3 \
 #  --template "CREATE TABLE IF NOT EXISTS \"{table_name}\" ( symbol SYMBOL capacity 256 CACHE, side SYMBOL capacity 256 CACHE, price DOUBLE, amount DOUBLE, timestamp TIMESTAMP ) timestamp(timestamp) PARTITION BY DAY WAL;"
+
+
+# usage example for drop. If template param is passed, it will be ignored
+# python bulk_table_creator_and_dropper.py  --mode drop --table-name test_trades   --amount 3 
 
